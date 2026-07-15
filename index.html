@@ -1,0 +1,389 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <title>🏆 東海道クイズ・10点満点獲得者ボード 🏆</title>
+    <style>
+        body { font-family: "Helvetica Neue", Arial, sans-serif; background: #f0f4f8; color: #333; text-align: center; padding: 20px; }
+        .container { background: white; max-width: 650px; margin: 0 auto; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
+        h1 { color: #102a43; margin-bottom: 5px; }
+        .subtitle { color: #486581; margin-bottom: 25px; font-weight: bold; }
+        
+        /* ボタンのデザイン */
+        button { cursor: pointer; padding: 10px 20px; border-radius: 6px; border: none; font-weight: bold; transition: background 0.2s; }
+        .btn-primary { background: #007bff; color: white; }
+        .btn-primary:hover { background: #0056b3; }
+        
+        /* ページの切り替え */
+        .page { display: none; }
+        .active { display: block; }
+
+        /* 検索・登録・暗号エリアのスタイル */
+        .search-box, .register-box, .secret-code-box { background: #f0f4f8; padding: 15px; border-radius: 8px; margin: 15px 0; border: 1px solid #d9e2ec; text-align: left; }
+        .search-box h3, .register-box h3, .secret-code-box h3 { margin-top: 0; color: #102a43; font-size: 16px; }
+        .flex-inputs { display: flex; gap: 10px; }
+        .flex-inputs input { flex: 1; padding: 10px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 6px; }
+
+        /* 最初は名前登録エリアを隠しておく */
+        .register-box { display: none; background: #e8f5e9; border: 2px dashed #2e7d32; }
+
+        /* ボードテーブル */
+        table { width: 100%; margin-top: 20px; border-collapse: collapse; background: white; }
+        th, td { padding: 12px; border-bottom: 1px solid #d9e2ec; text-align: center; font-size: 16px; }
+        th { background: #bcccdc; color: #102a43; }
+        
+        /* 検索ハイライト効果 */
+        .highlight { background-color: #fff3bf !important; font-weight: bold; border: 2px solid #fab005; animation: pulse 1s infinite alternate; }
+        @keyframes pulse {
+            0 { transform: scale(1); }
+            100% { transform: scale(1.01); }
+        }
+
+        .login-box { margin-top: 20px; padding: 20px; background: #e2e8f0; border-radius: 8px; display: none; border: 1px solid #cbd5e1; }
+        .login-box input { width: 100%; padding: 8px; font-size: 16px; border: 1px solid #cbd5e1; border-radius: 4px; box-sizing: border-box; }
+        
+        /* 管理者用消去リスト */
+        .delete-list { max-height: 300px; overflow-y: auto; background: #fff5f5; padding: 10px; border-radius: 6px; text-align: left; border: 1px solid #ffc9c9; }
+        .delete-item { display: flex; justify-content: space-between; padding: 8px; border-bottom: 1px solid #ffe3e3; align-items: center; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <audio id="bgm" loop style="display: none;">
+        <source src="https://upload.wikimedia.org/wikipedia/commons/2/28/Erik_Satie_-_Gymnop%C3%A9die_No._1.ogg" type="audio/ogg">
+    </audio>
+
+    <div id="viewer-page" class="page active">
+        <h1>💯 10点満点おめでとうボード 💯</h1>
+        <p class="subtitle">東海道クイズで満点をとったスゴイ人たちの名簿だヨ！</p>
+        
+        <div class="secret-code-box" id="code-box-area">
+            <h3>🔐 10点満点をとった人専用！暗号の入力欄</h3>
+            <p style="font-size: 13px; color: #627d98; margin: -5px 0 8px 0;">クイズの最後に手に入れた「3班の暗号」を入力してね！</p>
+            <div class="flex-inputs">
+                <input type="text" id="secret-code-input" placeholder="ここに暗号を入力してね">
+                <button class="btn-primary" onclick="checkSecretCode()" style="background: #2e7d32;">暗号を解除 🔓</button>
+            </div>
+        </div>
+
+        <div class="register-box" id="register-box-area">
+            <h3 style="color: #1b5e20;">🎉 暗号クリア！名前をボードに登録しよう！</h3>
+            <p style="font-size: 13px; color: #2e7d32; margin: -5px 0 8px 0;">おめでとう！きみの名前を10点満点ボードに載せられるヨ！</p>
+            <div class="flex-inputs">
+                <input type="text" id="new-winner-name" placeholder="きみの名前を入力してね">
+                <button class="btn-primary" onclick="addWinnerFromUser()" style="background: #2e7d32;">ボードに載る！ 🚀</button>
+            </div>
+        </div>
+
+        <div class="search-box">
+            <h3>🔍 じぶんの名前をさがす</h3>
+            <div class="flex-inputs">
+                <input type="text" id="search-name-input" placeholder="さがしたい名前を入力してね">
+                <button class="btn-primary" onclick="searchName()" style="background: #102a43;">検索する</button>
+            </div>
+            <p id="search-result-msg" style="margin: 8px 0 0 0; font-size: 14px; font-weight: bold; color: #d941c1;"></p>
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 30%;">番号</th>
+                    <th style="width: 70%;">満点をとった人のなまえ</th>
+                </tr>
+            </thead>
+            <tbody id="board-table-body">
+            </tbody>
+        </table>
+
+        <div id="login-box" class="login-box">
+            <h3>🔑 編集者認証</h3>
+            <input type="password" id="admin-pass-input" placeholder="暗証番号を入力してください">
+            <button class="btn-primary" onclick="checkLogin()" style="margin-top: 10px; width: 100%;">ログイン 🚪</button>
+        </div>
+    </div>
+
+
+    <div id="editor-page" class="page">
+        <h1 style="color: #c92a2a;">🛠️ ボード管理・データリセット</h1>
+        <p>管理者画面だヨ。不適切な名前があったら消去したり、全員分リセットできます。</p>
+        
+        <h3 style="text-align: left;">📋 現在登録されている人の一覧（個別に消せます）</h3>
+        <div class="delete-list" id="admin-delete-zone">
+        </div>
+
+        <button class="btn-primary" onclick="clearAllData()" style="background: #e03131; margin-top: 30px; width: 100%; font-size: 16px;">データを全員分ぜんぶ消す（完全リセット） ⚠️</button>
+        <br>
+        <button class="btn-primary" onclick="logout()" style="background: #868e96; margin-top: 15px;">閲覧画面にもどる ↩️</button>
+    </div>
+
+</div>
+
+<script>
+    // 最初のテスト用初期データ
+    const defaultWinners = ["たいき", "サンプルくん", "テストさん"];
+
+    // キーの同時押し状態を記録するオブジェクト
+    const pressedKeys = {};
+
+    window.onload = function() {
+        if (!localStorage.getItem("tokaido_winners")) {
+            localStorage.setItem("tokaido_winners", JSON.stringify(defaultWinners));
+        }
+        renderBoard();
+        setupHiddenLoginListener();
+        setupAutoPlayBGM();
+    };
+
+    // BGM自動フェードイン処理
+    function setupAutoPlayBGM() {
+        const bgm = document.getElementById('bgm');
+        bgm.volume = 0; 
+        
+        const startPlayAndFadeIn = () => {
+            bgm.play().then(() => {
+                let currentVolume = 0;
+                const targetVolume = 0.35;
+                const fadeInterval = setInterval(() => {
+                    if (currentVolume < targetVolume) {
+                        currentVolume += 0.01;
+                        if (currentVolume > targetVolume) currentVolume = targetVolume;
+                        bgm.volume = currentVolume;
+                    } else {
+                        clearInterval(fadeInterval);
+                    }
+                }, 100); 
+            }).catch(err => {
+                console.log("自動再生が制限されています。操作をお待ちします。");
+            });
+            
+            document.removeEventListener('click', startPlayAndFadeIn);
+        };
+        
+        // ユーザーが画面のどこかを触る（スクロールやクリックなど）と再生開始
+        document.addEventListener('click', startPlayAndFadeIn);
+    }
+
+    // 「s,a,k,e」同時押しを検出するリスナー
+    function setupHiddenLoginListener() {
+        window.addEventListener('keydown', function(e) {
+            const activeEl = document.activeElement;
+            if (activeEl && (activeEl.tagName === 'INPUT' || activeEl.tagName === 'TEXTAREA')) {
+                return; 
+            }
+
+            const key = e.key.toLowerCase();
+            if (['s', 'a', 'k', 'e'].includes(key)) {
+                pressedKeys[key] = true;
+            }
+
+            if (pressedKeys['s'] && pressedKeys['a'] && pressedKeys['k'] && pressedKeys['e']) {
+                showLoginBox();
+            }
+        });
+
+        window.addEventListener('keyup', function(e) {
+            const key = e.key.toLowerCase();
+            if (['s', 'a', 'k', 'e'].includes(key)) {
+                pressedKeys[key] = false;
+            }
+        });
+    }
+
+    // 3班の暗号「TOFU」をチェックする関数
+    function checkSecretCode() {
+        if (localStorage.getItem("already_registered") === "true") {
+            alert("きみはもう名前を登録しているヨ！登録できるのは1人1回までだヨ。⚠️");
+            document.getElementById("secret-code-input").value = "";
+            return;
+        }
+
+        const codeInput = document.getElementById("secret-code-input").value.trim();
+        
+        if (codeInput.toUpperCase() === "TOFU") {
+            alert("🔓 暗号クリア！名前の登録ができるようになったヨ！");
+            
+            document.getElementById("code-box-area").style.display = "none";
+            document.getElementById("register-box-area").style.display = "block";
+        } else {
+            alert("暗号がちがうみたいだヨ。もう一度たしかめてみてね！❌");
+        }
+    }
+
+    // 表（ボード）を描き出す関数
+    function renderBoard() {
+        const winners = JSON.parse(localStorage.getItem("tokaido_winners")) || [];
+        const tbody = document.getElementById("board-table-body");
+        tbody.innerHTML = "";
+
+        winners.forEach((name, i) => {
+            const tr = document.createElement("tr");
+            tr.id = `row-${i}`;
+
+            const tdNum = document.createElement("td");
+            tdNum.innerText = `${i + 1}人目`;
+
+            const tdName = document.createElement("td");
+            tdName.id = `name-cell-${i}`;
+            tdName.innerText = name;
+
+            tr.appendChild(tdNum);
+            tr.appendChild(tdName);
+            tbody.appendChild(tr);
+        });
+
+        const nextIndex = winners.length;
+        const trNext = document.createElement("tr");
+        trNext.id = `row-${nextIndex}`;
+
+        const tdNumNext = document.createElement("td");
+        tdNumNext.innerText = `${nextIndex + 1}人目`;
+
+        const tdNameNext = document.createElement("td");
+        tdNameNext.id = `name-cell-${nextIndex}`;
+        tdNameNext.innerText = "（チャレンジャー受付中！👀）";
+        tdNameNext.style.color = "#9ca3af";
+
+        trNext.appendChild(tdNumNext);
+        trNext.appendChild(tdNameNext);
+        tbody.appendChild(trNext);
+    }
+
+    // 名前検索機能
+    function searchName() {
+        const keyword = document.getElementById("search-name-input").value.trim().toLowerCase();
+        const msg = document.getElementById("search-result-msg");
+        
+        const allRows = document.querySelectorAll("#board-table-body tr");
+        allRows.forEach(row => row.classList.remove("highlight"));
+
+        if (!keyword) {
+            msg.innerText = "名前を入力してね！";
+            return;
+        }
+
+        const winners = JSON.parse(localStorage.getItem("tokaido_winners")) || [];
+        let foundIndices = [];
+
+        for (let i = 0; i < winners.length; i++) {
+            if (winners[i] && winners[i].toLowerCase().includes(keyword)) {
+                foundIndices.push(i);
+            }
+        }
+
+        if (foundIndices.length > 0) {
+            foundIndices.forEach(idx => {
+                const targetRow = document.getElementById(`row-${idx}`);
+                if (targetRow) {
+                    targetRow.classList.add("highlight");
+                }
+            });
+            msg.style.color = "#2b8a3e";
+            msg.innerText = `みつかったヨ！黄色く光っているところ（${foundIndices.map(x => x+1).join(', ')}人目）を見てネ！✨`;
+        } else {
+            msg.style.color = "#e03131";
+            msg.innerText = "そのなまえはボードに載っていないみたいだヨ。";
+        }
+    }
+
+    // ユーザーからの登録
+    function addWinnerFromUser() {
+        if (localStorage.getItem("already_registered") === "true") {
+            alert("きみはもう名前を登録しているヨ！登録できるのは1人1回までだヨ。⚠️");
+            return;
+        }
+
+        const nameInput = document.getElementById("new-winner-name");
+        const name = nameInput.value.trim();
+
+        if (!name) {
+            alert("なまえを入力してネ！");
+            return;
+        }
+
+        let winners = JSON.parse(localStorage.getItem("tokaido_winners")) || [];
+        winners.push(name);
+        localStorage.setItem("tokaido_winners", JSON.stringify(winners));
+        
+        localStorage.setItem("already_registered", "true");
+
+        nameInput.value = "";
+        
+        document.getElementById("register-box-area").style.display = "none";
+        document.getElementById("code-box-area").style.display = "block";
+        document.getElementById("secret-code-input").value = "";
+
+        renderBoard();
+        alert(`🎉 満点おめでとう！ボードの ${winners.length} 人目に載ったヨ！`);
+    }
+
+    // ログイン入力欄を表示
+    function showLoginBox() {
+        document.getElementById('login-box').style.display = 'block';
+        document.getElementById('admin-pass-input').focus();
+    }
+
+    // 暗証番号「81024」で検証
+    function checkLogin() {
+        const inputPass = document.getElementById('admin-pass-input').value.trim();
+        if (inputPass === "81024") {
+            alert("ログイン成功！管理者ページへ移動します。");
+            document.getElementById('admin-pass-input').value = "";
+            document.getElementById('login-box').style.display = 'none';
+            
+            setupAdminZone();
+
+            document.getElementById('viewer-page').classList.remove('active');
+            document.getElementById('editor-page').classList.add('active');
+        } else {
+            alert("暗証番号がちがうヨ！❌");
+        }
+    }
+
+    function setupAdminZone() {
+        const zone = document.getElementById("admin-delete-zone");
+        const winners = JSON.parse(localStorage.getItem("tokaido_winners")) || [];
+        zone.innerHTML = "";
+
+        if(winners.length === 0) {
+            zone.innerHTML = "<p style='color:#868e96;'>誰も登録されていません。</p>";
+            return;
+        }
+
+        winners.forEach((name, index) => {
+            zone.innerHTML += `
+                <div class="delete-item">
+                    <span>${index + 1}人目: <b>${name}</b></span>
+                    <button onclick="deleteIndividual(${index})" style="background:#fa5252; color:white; padding:4px 10px; font-size:12px;">この人を消す ❌</button>
+                </div>
+            `;
+        });
+    }
+
+    function deleteIndividual(index) {
+        let winners = JSON.parse(localStorage.getItem("tokaido_winners")) || [];
+        winners.splice(index, 1);
+        localStorage.setItem("tokaido_winners", JSON.stringify(winners));
+        setupAdminZone();
+        renderBoard();
+    }
+
+    function clearAllData() {
+        if (confirm("本当にボードのデータを全員分すべて消去してもいいかな❓\n※全員の『1回のみ登録制限』も一緒にリセットされます。")) {
+            localStorage.setItem("tokaido_winners", JSON.stringify([]));
+            localStorage.removeItem("already_registered");
+            setupAdminZone();
+            renderBoard();
+            alert("ぜんぶ綺麗にリセットしたヨ！");
+        }
+    }
+
+    function logout() {
+        document.getElementById('editor-page').classList.remove('active');
+        document.getElementById('viewer-page').classList.add('active');
+    }
+</script>
+
+</body>
+</html>
